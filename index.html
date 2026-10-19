@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bilingual Study Companion</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #2563eb;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; min-height: 100vh; gap: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 16px 24px; border-radius: 12px; border: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.4rem; color: #60a5fa; }
+    .subtitle { font-size: 0.85rem; color: var(--text-muted); }
+    .nav-tabs { display: flex; gap: 10px; }
+    .btn { background: var(--accent); color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary { background: #475569; }
+    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; flex: 1; }
+    .sidebar { background: var(--card-bg); border-radius: 12px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+    .course-item { padding: 12px; border-radius: 8px; cursor: pointer; background: #0f172a; border: 1px solid var(--border); transition: 0.2s; }
+    .course-item:hover, .course-item.active { border-color: #60a5fa; background: #1e3a8a; }
+    .course-zh { font-weight: bold; font-size: 0.95rem; }
+    .course-en { font-size: 0.8rem; color: #93c5fd; margin-top: 2px; }
+    .course-loc { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .main-content { background: var(--card-bg); border-radius: 12px; padding: 24px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 20px; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+    input, textarea { background: #0f172a; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 6px; font-size: 0.95rem; }
+    textarea { min-height: 80px; resize: vertical; }
+    .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .note-card { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; position: relative; }
+    .note-title-zh { font-weight: bold; color: #38bdf8; font-size: 1.05rem; }
+    .note-title-en { font-size: 0.9rem; color: #a7f3d0; font-weight: 500; }
+    .note-text-zh { font-size: 0.85rem; color: #cbd5e1; background: #1e293b; padding: 8px; border-radius: 6px; border-left: 3px solid #f59e0b; }
+    .note-text-en { font-size: 0.85rem; color: #f1f5f9; background: #1e293b; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981; }
+    .del-btn { position: absolute; top: 12px; right: 12px; background: transparent; color: #ef4444; border: none; cursor: pointer; font-size: 1.1rem; }
+    .flashcard-view { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 350px; gap: 20px; }
+    .flashcard { width: 100%; max-width: 500px; height: 260px; perspective: 1000px; cursor: pointer; }
+    .flashcard-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
+    .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+    .flashcard-front, .flashcard-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; border: 2px solid var(--accent); padding: 24px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; background: #0f172a; }
+    .flashcard-back { transform: rotateY(180deg); border-color: #10b981; }
+    .controls { display: flex; gap: 12px; }
+    @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Bilingual Study Companion 雙語學習筆記</h1>
+    <div class="subtitle">Designed for Filipino students in Chinese-taught courses</div>
+  </div>
+  <div class="nav-tabs">
+    <button class="btn" id="notesViewBtn" onclick="showView('notes')">Notes Mode</button>
+    <button class="btn btn-secondary" id="flashcardViewBtn" onclick="showView('flashcard')">Flashcard Review Mode</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="sidebar" id="courseList"></div>
+
+  <div class="main-content">
+    <div id="notesContainer">
+      <div class="section-header">
+        <div>
+          <h2 id="activeCourseTitleZh">Select a Course</h2>
+          <div id="activeCourseTitleEn" style="color: var(--text-muted); font-size: 0.9rem;"></div>
+        </div>
+        <button class="btn" onclick="toggleForm()">+ Add New Note</button>
+      </div>
+
+      <div id="noteForm" style="display:none; background: #0f172a; padding: 16px; border-radius: 8px; margin-top: 16px; border: 1px solid var(--border);">
+        <h3 style="margin-bottom: 12px; font-size: 1rem;">Add Book / Lecture Note</h3>
+        <div class="form-group">
+          <label>Chinese Term / Title (從課本/簡報的中文名稱)</label>
+          <input type="text" id="inputZhTerm" placeholder="e.g., 需求彈性">
+        </div>
+        <div class="form-group">
+          <label>English Translation / Concept Name</label>
+          <input type="text" id="inputEnTerm" placeholder="e.g., Price Elasticity of Demand">
+        </div>
+        <div class="form-group">
+          <label>Chinese Text from Book (課本原文)</label>
+          <textarea id="inputZhText" placeholder="Paste or type Chinese definition/passage..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Your English / Tagalog Notes & Explanation</label>
+          <textarea id="inputEnText" placeholder="Write what it means in English to make it easy for you to review..."></textarea>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn" onclick="saveNote()">Save Note</button>
+          <button class="btn btn-secondary" onclick="toggleForm()">Cancel</button>
+        </div>
+      </div>
+
+      <div class="notes-grid" id="notesList" style="margin-top: 20px;"></div>
+    </div>
+
+    <div class="flashcard-view" id="flashcardContainer">
+      <h2>Flashcard Review Mode</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Click the card to flip between Chinese terms and English notes.</p>
+
+      <div class="flashcard" id="cardElement" onclick="flipCard()">
+        <div class="flashcard-inner">
+          <div class="flashcard-front">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">CHINESE TERM / BOOK TEXT</span>
+            <div id="cardFrontZh" style="font-size: 1.4rem; font-weight: bold; color: #38bdf8;"></div>
+            <div id="cardFrontTextZh" style="font-size: 0.9rem; color: #cbd5e1; max-height: 80px; overflow-y: auto;"></div>
+          </div>
+          <div class="flashcard-back">
+            <span style="font-size: 0.8rem; color: #10b981;">ENGLISH MEANING & NOTES</span>
+            <div id="cardBackEn" style="font-size: 1.2rem; font-weight: bold; color: #a7f3d0;"></div>
+            <div id="cardBackTextEn" style="font-size: 0.9rem; color: #f1f5f9; max-height: 100px; overflow-y: auto;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-secondary" onclick="prevCard()">← Previous</button>
+        <span id="cardProgress" style="align-self: center; font-size: 0.9rem; color: var(--text-muted);">0 / 0</span>
+        <button class="btn" onclick="nextCard()">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Pre-configured subjects from your class schedule
+  const courses = [
+    { id: 'econ', zh: '經濟學原理', en: 'Principles of Economics', loc: 'Thu 09:10-12:00 (T0510)' },
+    { id: 'hosp', zh: '餐旅概論', en: 'Introduction to Hospitality', loc: 'Tue 09:10-12:00 (T0510)' },
+    { id: 'tourism', zh: '觀光概論', en: 'Introduction to Tourism', loc: 'Wed 13:10-16:00 (T0510)' },
+    { id: 'leisure', zh: '休閒遊憩概論', en: 'Introduction to Leisure & Recreation', loc: 'Wed 09:10-12:00 (T0406)' },
+    { id: 'marine', zh: '海洋觀光', en: 'Marine Tourism', loc: 'Fri 14:10-17:00 (T0510)' },
+    { id: 'app_prog', zh: '應用程式設計', en: 'Applied Programming Design', loc: 'Mon 15:10-17:00 (LB209)' },
+    { id: 'sel', zh: '大學入門-社會情緒學習', en: 'Intro to University - Social Emotional Learning', loc: 'Mon 11:10-12:00 (DB131)' },
+    { id: 'eng', zh: '基礎英文 I', en: 'Basic English I', loc: 'Tue 15:10-17:00 (T0201)' }
+  ];
+
+  let selectedCourseId = courses[0].id;
+  let notesData = JSON.parse(localStorage.getItem('study_notes_db')) || {};
+  let currentCardIndex = 0;
+
+  function init() {
+    renderSidebar();
+    selectCourse(courses[0].id);
+  }
+
+  function renderSidebar() {
+    const container = document.getElementById('courseList');
+    container.innerHTML = courses.map(c => `
+      <div class="course-item ${c.id === selectedCourseId ? 'active' : ''}" onclick="selectCourse('${c.id}')">
+        <div class="course-zh">${c.zh}</div>
+        <div class="course-en">${c.en}</div>
+        <div class="course-loc">📍 ${c.loc}</div>
+      </div>
+    `).join('');
+  }
+
+  function selectCourse(courseId) {
+    selectedCourseId = courseId;
+    renderSidebar();
+    const course = courses.find(c => c.id === courseId);
+    document.getElementById('activeCourseTitleZh').innerText = course.zh;
+    document.getElementById('activeCourseTitleEn').innerText = `${course.en} — ${course.loc}`;
+    renderNotes();
+    resetFlashcards();
+  }
+
+  function toggleForm() {
+    const form = document.getElementById('noteForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function saveNote() {
+    const zhTerm = document.getElementById('inputZhTerm').value.trim();
+    const enTerm = document.getElementById('inputEnTerm').value.trim();
+    const zhText = document.getElementById('inputZhText').value.trim();
+    const enText = document.getElementById('inputEnText').value.trim();
+
+    if (!zhTerm && !enTerm) {
+      alert('Please enter at least a term or title.');
+      return;
+    }
+
+    if (!notesData[selectedCourseId]) notesData[selectedCourseId] = [];
+
+    notesData[selectedCourseId].push({
+      id: Date.now(),
+      zhTerm,
+      enTerm,
+      zhText,
+      enText
+    });
+
+    localStorage.setItem('study_notes_db', JSON.stringify(notesData));
+    
+    document.getElementById('inputZhTerm').value = '';
+    document.getElementById('inputEnTerm').value = '';
+    document.getElementById('inputZhText').value = '';
+    document.getElementById('inputEnText').value = '';
+    toggleForm();
+    renderNotes();
+  }
+
+  function deleteNote(id) {
+    notesData[selectedCourseId] = notesData[selectedCourseId].filter(n => n.id !== id);
+    localStorage.setItem('study_notes_db', JSON.stringify(notesData));
+    renderNotes();
+  }
+
+  function renderNotes() {
+    const list = document.getElementById('notesList');
+    const notes = notesData[selectedCourseId] || [];
+
+    if (notes.length === 0) {
+      list.innerHTML = `<p style="color: var(--text-muted); grid-column: 1/-1;">No notes saved for this subject yet. Click "+ Add New Note" above to copy Chinese book concepts and translate them!</p>`;
+      return;
+    }
+
+    list.innerHTML = notes.map(n => `
+      <div class="note-card">
+        <button class="del-btn" onclick="deleteNote(${n.id})">✕</button>
+        <div class="note-title-zh">${n.zhTerm || '—'}</div>
+        <div class="note-title-en">💡 ${n.enTerm || '—'}</div>
+        ${n.zhText ? `<div class="note-text-zh"><b>中文:</b> ${n.zhText}</div>` : ''}
+        ${n.enText ? `<div class="note-text-en"><b>English Note:</b> ${n.enText}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function showView(view) {
+    if (view === 'notes') {
+      document.getElementById('notesContainer').style.display = 'block';
+      document.getElementById('flashcardContainer').style.display = 'none';
+      document.getElementById('notesViewBtn').className = 'btn';
+      document.getElementById('flashcardViewBtn').className = 'btn btn-secondary';
+    } else {
+      document.getElementById('notesContainer').style.display = 'none';
+      document.getElementById('flashcardContainer').style.display = 'flex';
+      document.getElementById('notesViewBtn').className = 'btn btn-secondary';
+      document.getElementById('flashcardViewBtn').className = 'btn';
+      resetFlashcards();
+    }
+  }
+
+  function resetFlashcards() {
+    currentCardIndex = 0;
+    updateFlashcard();
+  }
+
+  function flipCard() {
+    document.getElementById('cardElement').classList.toggle('flipped');
+  }
+
+  function updateFlashcard() {
+    document.getElementById('cardElement').classList.remove('flipped');
+    const notes = notesData[selectedCourseId] || [];
+    const progress = document.getElementById('cardProgress');
+
+    if (notes.length === 0) {
+      document.getElementById('cardFrontZh').innerText = 'No Notes Found';
+      document.getElementById('cardFrontTextZh').innerText = 'Add notes in Notes Mode first!';
+      document.getElementById('cardBackEn').innerText = 'No Data';
+      document.getElementById('cardBackTextEn').innerText = '';
+      progress.innerText = '0 / 0';
+      return;
+    }
+
+    const note = notes[currentCardIndex];
+    document.getElementById('cardFrontZh').innerText = note.zhTerm || 'Chinese Term';
+    document.getElementById('cardFrontTextZh').innerText = note.zhText || '';
+    document.getElementById('cardBackEn').innerText = note.enTerm || 'English Meaning';
+    document.getElementById('cardBackTextEn').innerText = note.enText || '';
+    progress.innerText = `${currentCardIndex + 1} / ${notes.length}`;
+  }
+
+  function nextCard() {
+    const notes = notesData[selectedCourseId] || [];
+    if (notes.length === 0) return;
+    currentCardIndex = (currentCardIndex + 1) % notes.length;
+    updateFlashcard();
+  }
+
+  function prevCard() {
+    const notes = notesData[selectedCourseId] || [];
+    if (notes.length === 0) return;
+    currentCardIndex = (currentCardIndex - 1 + notes.length) % notes.length;
+    updateFlashcard();
+  }
+
+  init();
+</script>
+</body>
+</html>
